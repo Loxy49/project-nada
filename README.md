@@ -210,7 +210,7 @@ npm run test:js      # tes JavaScript kompres foto di browser (butuh npm install
 
 Keduanya juga dijalankan otomatis oleh GitHub Actions di setiap pull request dan setiap push ke `main`.
 
-Tes memakai PHP memakai SQLite in-memory (tidak menyentuh database MySQL-mu). Mencakup pembuatan nota & nomor unik, rekap per kategori, cetak, ekspor, kunci periode, soft delete & jejak audit, aturan edit karyawan, pengelolaan pengguna, upload & akses foto bukti, tombol tema, dan pemeriksa keamanan.
+Tes PHP memakai SQLite in-memory (tidak menyentuh database MySQL-mu). Mencakup pembuatan nota & nomor unik, rekap per kategori, cetak, ekspor, kunci periode, soft delete & jejak audit, aturan edit karyawan, pengelolaan pengguna, upload & akses foto bukti, tombol tema, dan pemeriksa keamanan.
 
 Kalau muncul error `could not find driver` atau `"mbstring" extension is not available`, berarti PHP yang terpanggil belum mengaktifkan ekstensi tersebut. Cek dengan `php -m`, lalu aktifkan baris `extension=pdo_sqlite`, `extension=sqlite3`, dan `extension=mbstring` di `php.ini`. Kalau di komputer ada beberapa PHP (misalnya XAMPP dan instalasi lain), pastikan yang dipakai adalah yang benar dengan `where php`, atau jalankan langsung, misalnya `C:\xampp\php\php.exe artisan test`.
 
