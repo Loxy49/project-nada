@@ -57,7 +57,7 @@ Catatan: nota di **periode yang sudah dikunci** tidak bisa diubah, dihapus, atau
 
 ## Kebutuhan Sistem
 
-- PHP >= 8.2 (ekstensi umum Laravel; untuk menjalankan tes perlu juga `pdo_sqlite`)
+- PHP >= 8.2 dengan ekstensi `mbstring`, `pdo_mysql`, `fileinfo`, dan `gd`; untuk menjalankan tes perlu juga `pdo_sqlite` dan `sqlite3`
 - Composer
 - MySQL (bisa pakai Laragon/XAMPP)
 - Node.js & npm (untuk compile asset CSS/JS)
@@ -191,6 +191,9 @@ php artisan test
 ```
 
 Tes memakai SQLite in-memory (tidak menyentuh database MySQL-mu). Mencakup pembuatan nota & nomor unik, rekap per kategori, cetak, ekspor, kunci periode, soft delete & jejak audit, aturan edit karyawan, pengelolaan pengguna, upload & akses foto bukti, tombol tema, dan pemeriksa keamanan.
+
+Kalau muncul error `could not find driver` atau `"mbstring" extension is not available`, berarti PHP yang terpanggil belum mengaktifkan ekstensi tersebut. Cek dengan `php -m`, lalu aktifkan baris `extension=pdo_sqlite`, `extension=sqlite3`, dan `extension=mbstring` di `php.ini`. Kalau di komputer ada beberapa PHP (misalnya XAMPP dan instalasi lain), pastikan yang dipakai adalah yang benar dengan `where php`, atau jalankan langsung, misalnya `C:\xampp\php\php.exe artisan test`.
+
 
 ## Struktur Folder Penting
 
