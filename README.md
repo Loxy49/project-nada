@@ -201,9 +201,13 @@ Jangan pernah membagikan atau meng-upload file `.env` (berisi password database 
 
 ## Menjalankan Tes
 
+Ada dua jenis tes:
+
 ```
-php artisan test
+php artisan test     # tes PHP (fitur, hak akses, database)
+npm run test:js      # tes JavaScript kompres foto di browser (butuh npm install)
 ```
+Keduanya juga dijalankan otomatis oleh GitHub Actions di setiap pull request dan setiap push ke `main`.
 
 Tes memakai SQLite in-memory (tidak menyentuh database MySQL-mu). Mencakup pembuatan nota & nomor unik, rekap per kategori, cetak, ekspor, kunci periode, soft delete & jejak audit, aturan edit karyawan, pengelolaan pengguna, upload & akses foto bukti, tombol tema, dan pemeriksa keamanan.
 
