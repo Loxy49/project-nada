@@ -11,6 +11,7 @@ Dibangun dengan **Laravel 12** (PHP) dan **MySQL**.
 ## Fitur Utama
 
 **Pencatatan & cetak**
+
 - Nota multi-item: tiap item punya kategori, keterangan, kuantitas, dan harga satuan
 - Field khusus **No. Pelanggan & SN** per item untuk transaksi pulsa/token/PDAM (ikut tercetak dan masuk Excel)
 - Metode bayar (Tunai, Transfer Bank, QRIS, Kartu Debit/Kredit, Lainnya) dan foto bukti opsional (gambar, maks. 2 MB; foto besar dari HP otomatis diperkecil di browser)
@@ -20,6 +21,7 @@ Dibangun dengan **Laravel 12** (PHP) dan **MySQL**.
 - Template kop nota yang bisa dikustomisasi admin (nama toko, logo, alamat) tanpa ubah kode
 
 **Rekap & arsip**
+
 - Riwayat nota dengan pencarian & filter (kategori, bulan)
 - **Jejak audit**: setiap nota dibuat, diubah (kondisi sebelum & sesudah), dihapus, atau dipulihkan tercatat lengkap dengan siapa dan kapan; admin melihatnya di halaman nota dan di menu **Log Nota**
 - **Hapus nota = soft delete**: admin wajib mengisi alasan, nota bisa dipulihkan dari Riwayat → Nota terhapus, dan nomornya tidak dipakai lagi
@@ -28,28 +30,30 @@ Dibangun dengan **Laravel 12** (PHP) dan **MySQL**.
 - **Kunci periode**: admin menutup bulan yang sudah direkap; nota di bulan itu tidak bisa ditambah, diubah, atau dihapus oleh siapa pun sampai kuncinya dibuka dengan alasan yang tercatat
 
 **Akun & keamanan**
+
 - Login dan lupa/reset password. **Tidak ada registrasi publik**: akun dibuat admin
 - Dua peran: karyawan dan admin (accounting)
 - Akun tidak dihapus, tapi **dinonaktifkan** (nota yang pernah dibuat tetap utuh); akun nonaktif tidak bisa login dan sesinya langsung diputus
 - Tes otomatis (`php artisan test`) dan perintah pemeriksa keamanan (`php artisan nada:cek-keamanan`)
 
 **Tampilan**
+
 - **Mode terang & gelap**: tombol di samping avatar profil; pilihan disimpan di browser, dan bila belum pernah dipilih mengikuti pengaturan perangkat
 - Halaman cetak dan preview template selalu terang karena menggambarkan kertas
 
 ## Hak Akses
 
-|                                       | Karyawan | Admin |
-|---------------------------------------|----------|-------|
-| Buat nota & cetak                     | ✓ | ✓ |
-| Lihat riwayat nota                    | hanya nota sendiri | semua nota |
-| Edit nota                             | nota sendiri, sampai 7 hari setelah dibuat* | semua nota |
-| Hapus & pulihkan nota                 | ✗ | ✓ (alasan wajib, bisa dipulihkan) |
-| Dashboard                             | ringkasan sendiri | ringkasan seluruh nota |
-| Kategori, Template Nota, Ekspor Rekap | ✗ | ✓ |
-| Kunci Periode                         | ✗ | ✓ |
-| Kelola Pengguna                       | ✗ | ✓ |
-| Log Nota (jejak audit)                | ✗ | ✓ |
+|                                       | Karyawan                                     | Admin                             |
+| ------------------------------------- | -------------------------------------------- | --------------------------------- |
+| Buat nota & cetak                     | ✓                                            | ✓                                 |
+| Lihat riwayat nota                    | hanya nota sendiri                           | semua nota                        |
+| Edit nota                             | nota sendiri, sampai 7 hari setelah dibuat\* | semua nota                        |
+| Hapus & pulihkan nota                 | ✗                                            | ✓ (alasan wajib, bisa dipulihkan) |
+| Dashboard                             | ringkasan sendiri                            | ringkasan seluruh nota            |
+| Kategori, Template Nota, Ekspor Rekap | ✗                                            | ✓                                 |
+| Kunci Periode                         | ✗                                            | ✓                                 |
+| Kelola Pengguna                       | ✗                                            | ✓                                 |
+| Log Nota (jejak audit)                | ✗                                            | ✓                                 |
 
 \* Batas hari edit karyawan diatur lewat `NOTA_EDIT_KARYAWAN_HARI` di `.env` (default 7). Setiap perubahan tercatat di jejak audit.
 
@@ -57,7 +61,7 @@ Catatan: nota di **periode yang sudah dikunci** tidak bisa diubah, dihapus, atau
 
 ## Kebutuhan Sistem
 
-- PHP >= 8.2 (ekstensi umum Laravel; untuk menjalankan tes perlu juga `pdo_sqlite`)
+- PHP >= 8.2 dengan ekstensi `mbstring`, `pdo_mysql`, `fileinfo`, dan `gd`; untuk menjalankan tes perlu juga `pdo_sqlite` dan `sqlite3`
 - Composer
 - MySQL (bisa pakai Laragon/XAMPP)
 - Node.js & npm (untuk compile asset CSS/JS)
@@ -65,56 +69,66 @@ Catatan: nota di **periode yang sudah dikunci** tidak bisa diubah, dihapus, atau
 ## Cara Instalasi
 
 1. **Clone project ini**, lalu masuk ke foldernya lewat terminal:
-   ```
-   git clone https://github.com/Loxy49/nada-notadigital.git
-   cd nada-notadigital
-   ```
+
+    ```
+    git clone https://github.com/Loxy49/nada-notadigital.git
+    cd nada-notadigital
+    ```
 
 2. **Install dependency PHP:**
-   ```
-   composer install
-   ```
+
+    ```
+    composer install
+    ```
 
 3. **Install dependency JavaScript:**
-   ```
-   npm install
-   npm run build
-   ```
+
+    ```
+    npm install
+    npm run build
+    ```
 
 4. **Salin file environment:**
-   ```
-   copy .env.example .env
-   ```
-   (di Mac/Linux pakai `cp .env.example .env`)
+
+    ```
+    copy .env.example .env
+    ```
+
+    (di Mac/Linux pakai `cp .env.example .env`)
 
 5. **Generate application key:**
-   ```
-   php artisan key:generate
-   ```
+
+    ```
+    php artisan key:generate
+    ```
 
 6. **Buat database MySQL baru** (misalnya lewat HeidiSQL/phpMyAdmin), namanya bebas — contoh `nada`.
 
 7. **Sesuaikan koneksi database di `.env`:**
-   ```
-   DB_CONNECTION=mysql
-   DB_HOST=127.0.0.1
-   DB_PORT=3306
-   DB_DATABASE=nada
-   DB_USERNAME=root
-   DB_PASSWORD=
-   ```
+
+    ```
+    DB_CONNECTION=mysql
+    DB_HOST=127.0.0.1
+    DB_PORT=3306
+    DB_DATABASE=nada
+    DB_USERNAME=root
+    DB_PASSWORD=
+    ```
 
 8. **Jalankan migration dan seeder** (membuat semua tabel dan 5 kategori awal: Parkir, Makan / konsumsi, Alat tulis kantor, Transportasi, Lain-lain):
-   ```
-   php artisan migrate --seed
-   ```
+
+    ```
+    php artisan migrate --seed
+    ```
 
 9. **Buat symbolic link storage** (wajib, supaya logo template nota bisa tampil; foto bukti tidak memerlukannya karena disimpan private dan ditampilkan lewat aplikasi):
-   ```
-   php artisan storage:link
-   ```
+
+    ```
+    php artisan storage:link
+    ```
 
 10. **Buat akun admin pertama** (password diketik lewat prompt, tidak tersimpan di riwayat terminal):
+
     ```
     php artisan nada:buat-admin
     ```
@@ -141,6 +155,7 @@ php artisan migrate
 **Karyawan:** login → **Buat Nota** → isi tanggal, item (kategori, keterangan, qty, harga; No. Pelanggan/SN kalau pulsa/token), metode bayar, dan foto bukti bila ada → simpan → **Cetak**. Salah input? Nota sendiri bisa diedit sampai 7 hari setelah dibuat, selama belum diarsipkan accounting.
 
 **Admin / accounting:**
+
 1. Pantau nota di **Riwayat** dan **Dashboard**; periksa siapa mengubah atau menghapus apa di **Log Nota**.
 2. Akhir bulan, unduh rekap **Excel/PDF** (menu Ekspor Rekap, atau tombol di halaman Kunci Periode).
 3. Buka **Kunci Periode** dan kunci bulan yang sudah direkap supaya notanya tidak bisa berubah lagi.
@@ -179,8 +194,8 @@ Jangan pernah membagikan atau meng-upload file `.env` (berisi password database 
 
 ## Perintah Artisan Khusus
 
-|              Perintah           |                                              Fungsi                                                   |
-|                ---              |                                                ---                                                    |
+| Perintah                        | Fungsi                                                                                                |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | `php artisan nada:buat-admin`   | Buat akun (default admin) lewat terminal; dipakai untuk admin pertama atau kalau semua admin terkunci |
 | `php artisan nada:cek-keamanan` | Periksa pengaturan keamanan dasar sebelum aplikasi dipakai sungguhan                                  |
 
@@ -191,6 +206,8 @@ php artisan test
 ```
 
 Tes memakai SQLite in-memory (tidak menyentuh database MySQL-mu). Mencakup pembuatan nota & nomor unik, rekap per kategori, cetak, ekspor, kunci periode, soft delete & jejak audit, aturan edit karyawan, pengelolaan pengguna, upload & akses foto bukti, tombol tema, dan pemeriksa keamanan.
+
+Kalau muncul error `could not find driver` atau `"mbstring" extension is not available`, berarti PHP yang terpanggil belum mengaktifkan ekstensi tersebut. Cek dengan `php -m`, lalu aktifkan baris `extension=pdo_sqlite`, `extension=sqlite3`, dan `extension=mbstring` di `php.ini`. Kalau di komputer ada beberapa PHP (misalnya XAMPP dan instalasi lain), pastikan yang dipakai adalah yang benar dengan `where php`, atau jalankan langsung, misalnya `C:\xampp\php\php.exe artisan test`.
 
 ## Struktur Folder Penting
 
