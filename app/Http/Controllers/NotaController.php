@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\NotaRequest;
 use App\Models\Kategori;
 use App\Models\Nota;
 use App\Models\NotaLog;
 use App\Models\PeriodeKunci;
 use App\Models\Pengaturan;
+use App\Support\Terbilang;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,39 +28,17 @@ class NotaController extends Controller
     // Simpan nota baru yang dibuat karyawan (bisa berisi beberapa item sekaligus,
     // tiap item bisa punya qty > 1 kalau barang/transaksinya sama diulang).
     // Tidak ada alur approval — begitu disimpan, nota langsung final.
-    public function store(Request $request)
+    public function store(NotaRequest $request)
     {
-        $validated = $request->validate([
-            'tanggal' => $this->aturanTanggal(),
-            'kasir' => 'nullable|string|max:100',
-            'metode_bayar' => 'nullable|string|max:50',
-            'bukti_file' => 'nullable|file|image|max:2048',
-            'items' => 'required|array|min:1',
-            'items.*.kategori_id' => 'required|exists:kategoris,id',
-            'items.*.keterangan' => 'nullable|string|max:255',
-            'items.*.nominal' => 'required|numeric|min:1',
-            'items.*.qty' => 'nullable|integer|min:1',
-            'items.*.no_pelanggan' => 'nullable|string|max:100',
-            'items.*.sn' => 'nullable|string|max:100',
-        ], [
-            'bukti_file.image' => 'Bukti harus berupa gambar (JPG atau PNG).',
-            'bukti_file.max' => 'Ukuran foto bukti maksimal 2 MB.',
-            'bukti_file.uploaded' => 'Foto bukti gagal diunggah, kemungkinan terlalu besar (maksimal 2 MB). Pilih foto yang lebih kecil.',
-        ]);
+        $validated = $request->validated();
 
         $buktiFile = null;
         if ($request->hasFile('bukti_file')) {
             $buktiFile = $request->file('bukti_file')->store('bukti-nota', Nota::DISK_BUKTI);
         }
 
-        $items = $validated['items'];
-        // Pastikan tiap item punya qty (default 1 kalau tidak diisi)
-        foreach ($items as $i => $item) {
-            $items[$i]['qty'] = $item['qty'] ?? 1;
-        }
-
-        // Total nota = jumlah (harga satuan x qty) tiap item
-        $total = array_sum(array_map(fn ($item) => $item['nominal'] * $item['qty'], $items));
+        $items = $request->items();
+        $total = $request->total();
 
         // Nota + rincian item disimpan dalam satu transaksi: kalau salah satu gagal, semuanya dibatalkan.
         // Kalau dua orang menyimpan bersamaan dan nomor nota kebetulan bentrok (unique), ulangi dengan nomor baru.
@@ -92,8 +72,12 @@ class NotaController extends Controller
                 break;
             } catch (UniqueConstraintViolationException $e) {
                 if ($coba === 5) {
+                    $this->hapusBuktiYatim($buktiFile);
                     throw $e;
                 }
+            } catch (\Throwable $e) {
+                $this->hapusBuktiYatim($buktiFile);
+                throw $e;
             }
         }
 
@@ -143,27 +127,14 @@ class NotaController extends Controller
     }
 
     // Simpan perubahan nota: rincian item lama dihapus, diganti yang baru dari form
-    public function update(Request $request, Nota $nota)
+    public function update(Nota $nota)
     {
+        // Hak akses dicek dulu, baru form divalidasi (NotaRequest langsung memvalidasi saat di-resolve),
+        // supaya user tanpa akses dapat 403, bukan pesan validasi.
         $this->authorizeEdit($nota);
 
-        $validated = $request->validate([
-            'tanggal' => $this->aturanTanggal(),
-            'kasir' => 'nullable|string|max:100',
-            'metode_bayar' => 'nullable|string|max:50',
-            'bukti_file' => 'nullable|file|image|max:2048',
-            'items' => 'required|array|min:1',
-            'items.*.kategori_id' => 'required|exists:kategoris,id',
-            'items.*.keterangan' => 'nullable|string|max:255',
-            'items.*.nominal' => 'required|numeric|min:1',
-            'items.*.qty' => 'nullable|integer|min:1',
-            'items.*.no_pelanggan' => 'nullable|string|max:100',
-            'items.*.sn' => 'nullable|string|max:100',
-        ], [
-            'bukti_file.image' => 'Bukti harus berupa gambar (JPG atau PNG).',
-            'bukti_file.max' => 'Ukuran foto bukti maksimal 2 MB.',
-            'bukti_file.uploaded' => 'Foto bukti gagal diunggah, kemungkinan terlalu besar (maksimal 2 MB). Pilih foto yang lebih kecil.',
-        ]);
+        $request = app(NotaRequest::class);
+        $validated = $request->validated();
 
         $buktiLama = $nota->bukti_file;
         $buktiFile = $buktiLama;
@@ -171,17 +142,35 @@ class NotaController extends Controller
             $buktiFile = $request->file('bukti_file')->store('bukti-nota', Nota::DISK_BUKTI);
         }
 
-        $items = $validated['items'];
-        foreach ($items as $i => $item) {
-            $items[$i]['qty'] = $item['qty'] ?? 1;
-        }
-
-        $total = array_sum(array_map(fn ($item) => $item['nominal'] * $item['qty'], $items));
+        $items = $request->items();
+        $total = $request->total();
 
         // Update header + sinkron item dalam satu transaksi (hapus yang lama, buat ulang dari form).
         // Kondisi sebelum & sesudah dicatat ke jejak audit (hanya kalau memang ada yang berubah).
         $sebelum = NotaLog::snapshot($nota);
 
+        try {
+            $this->simpanPerubahan($nota, $validated, $items, $total, $buktiFile, $sebelum);
+        } catch (\Throwable $e) {
+            // Transaksi gagal: nota masih memakai foto lama, foto baru yang terlanjur diunggah dibuang.
+            if ($buktiFile !== $buktiLama) {
+                $this->hapusBuktiYatim($buktiFile);
+            }
+            throw $e;
+        }
+
+        // Foto lama dihapus setelah transaksi berhasil (kalau gagal, nota masih memakai foto lama).
+        // Jejak audit hanya mencatat nama filenya, jadi foto yang sudah diganti tidak dipakai lagi di mana pun.
+        if ($buktiLama && $buktiLama !== $buktiFile) {
+            Storage::disk(Nota::DISK_BUKTI)->delete($buktiLama);
+        }
+
+        return redirect()->route('nota.show', $nota)
+            ->with('success', "Nota {$nota->no_nota} berhasil diperbarui.");
+    }
+
+    private function simpanPerubahan(Nota $nota, array $validated, array $items, float $total, ?string $buktiFile, array $sebelum): void
+    {
         DB::transaction(function () use ($nota, $validated, $items, $total, $buktiFile, $sebelum) {
             $nota->update([
                 'kasir' => $validated['kasir'] ?: $nota->kasir,
@@ -205,15 +194,6 @@ class NotaController extends Controller
                 NotaLog::catat($nota, 'ubah', $sebelum, $sesudah);
             }
         });
-
-        // Foto lama dihapus setelah transaksi berhasil (kalau gagal, nota masih memakai foto lama).
-        // Jejak audit hanya mencatat nama filenya, jadi foto yang sudah diganti tidak dipakai lagi di mana pun.
-        if ($buktiLama && $buktiLama !== $buktiFile) {
-            Storage::disk(Nota::DISK_BUKTI)->delete($buktiLama);
-        }
-
-        return redirect()->route('nota.show', $nota)
-            ->with('success', "Nota {$nota->no_nota} berhasil diperbarui.");
     }
 
     // Halaman cetak nota (format formal A4 & struk), karyawan pemilik atau admin.
@@ -230,7 +210,7 @@ class NotaController extends Controller
 
         $daftarTemplate = Pengaturan::orderBy('nama')->get();
 
-        $terbilang = ucfirst(trim(preg_replace('/\s+/', ' ', $this->terbilang((int) $nota->nominal)))).' rupiah';
+        $terbilang = Terbilang::rupiah((int) $nota->nominal);
 
         return view('nota.cetak', compact('nota', 'terbilang', 'pengaturan', 'daftarTemplate'));
     }
@@ -259,7 +239,13 @@ class NotaController extends Controller
         }
 
         if ($request->filled('kategori_id')) {
-            $query->where('kategori_id', $request->kategori_id);
+            // Cocokkan ke kategori tiap item (bukan cuma kategori nota = item pertama), supaya nota
+            // multi-kategori ikut muncul. Nota lama tanpa item tetap tercakup lewat kategori notanya.
+            $kategoriId = $request->kategori_id;
+            $query->where(function ($q) use ($kategoriId) {
+                $q->where('kategori_id', $kategoriId)
+                  ->orWhereHas('items', fn ($i) => $i->where('kategori_id', $kategoriId));
+            });
         }
 
         if ($request->filled('bulan')) {
@@ -349,33 +335,12 @@ class NotaController extends Controller
         return $sisa > 0 ? "{$pertama} (+{$sisa} item lainnya)" : $pertama;
     }
 
-    // Konversi angka ke terbilang bahasa Indonesia (rekursif)
-    private function terbilang(int $angka): string
+    // Buang foto bukti yang terlanjur diunggah kalau notanya gagal disimpan, biar tidak menumpuk di storage.
+    private function hapusBuktiYatim(?string $buktiFile): void
     {
-        $angka = abs($angka);
-        $huruf = ['', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'delapan', 'sembilan', 'sepuluh', 'sebelas'];
-
-        if ($angka < 12) {
-            return $huruf[$angka];
-        } elseif ($angka < 20) {
-            return $this->terbilang($angka - 10).' belas';
-        } elseif ($angka < 100) {
-            return $this->terbilang(intdiv($angka, 10)).' puluh '.$this->terbilang($angka % 10);
-        } elseif ($angka < 200) {
-            return 'seratus '.$this->terbilang($angka - 100);
-        } elseif ($angka < 1000) {
-            return $this->terbilang(intdiv($angka, 100)).' ratus '.$this->terbilang($angka % 100);
-        } elseif ($angka < 2000) {
-            return 'seribu '.$this->terbilang($angka - 1000);
-        } elseif ($angka < 1000000) {
-            return $this->terbilang(intdiv($angka, 1000)).' ribu '.$this->terbilang($angka % 1000);
-        } elseif ($angka < 1000000000) {
-            return $this->terbilang(intdiv($angka, 1000000)).' juta '.$this->terbilang($angka % 1000000);
-        } elseif ($angka < 1000000000000) {
-            return $this->terbilang(intdiv($angka, 1000000000)).' milyar '.$this->terbilang($angka % 1000000000);
+        if ($buktiFile) {
+            Storage::disk(Nota::DISK_BUKTI)->delete($buktiFile);
         }
-
-        return $this->terbilang(intdiv($angka, 1000000000000)).' triliun '.$this->terbilang($angka % 1000000000000);
     }
 
     // Pastikan karyawan cuma bisa akses nota miliknya sendiri, admin bebas
@@ -407,23 +372,6 @@ class NotaController extends Controller
             $hari = (int) config('pettynota.edit_karyawan_hari', 7);
             abort(403, "Nota hanya bisa diedit sampai {$hari} hari setelah dibuat. Hubungi admin jika nota masih perlu dikoreksi.");
         }
-    }
-
-    // Aturan tanggal nota: harus tanggal valid dan tidak jatuh di periode yang sudah dikunci accounting.
-    // Berlaku untuk semua role (admin juga) dan untuk memindahkan nota ke bulan terkunci.
-    private function aturanTanggal(): array
-    {
-        return [
-            'bail', 'required', 'date',
-            function (string $attribute, mixed $value, \Closure $fail) {
-                if (PeriodeKunci::terkunci($value)) {
-                    $label = PeriodeKunci::labelDariTanggal($value);
-                    $fail(Auth::user()?->isAdmin()
-                        ? "Periode {$label} sudah ditutup oleh accounting sehingga nota tidak dapat dibuat atau dipindahkan ke bulan tersebut. Buka kunci periode terlebih dahulu jika diperlukan."
-                        : "Periode {$label} sudah diarsipkan accounting sehingga nota tidak dapat dibuat atau dipindahkan ke bulan tersebut. Hubungi admin.");
-                }
-            },
-        ];
     }
 
     // Tolak aksi (ubah/hapus/pulihkan) kalau tanggal nota jatuh di periode yang sudah dikunci.

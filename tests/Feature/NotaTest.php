@@ -6,6 +6,7 @@ use App\Models\Kategori;
 use App\Models\Nota;
 use App\Models\NotaItem;
 use App\Models\User;
+use App\Support\Terbilang;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -136,5 +137,59 @@ class NotaTest extends TestCase
         $this->actingAs($this->admin)
             ->get(route('rekap.export.excel', ['bulan' => now()->format('Y-m')]))
             ->assertOk();
+    }
+
+    public function test_nominal_melebihi_kapasitas_kolom_ditolak_validasi(): void
+    {
+        // Harga satuan sendiri sudah kebesaran
+        $this->buatNota([$this->itemParkir(['nominal' => Nota::NOMINAL_MAKS + 1])])
+            ->assertSessionHasErrors('items.0.nominal');
+
+        // Tiap item masih wajar, tapi totalnya (harga x qty) melebihi decimal(12,2)
+        $this->buatNota([$this->itemParkir(['nominal' => 2000000000, 'qty' => 5]), $this->itemParkir()])
+            ->assertSessionHasErrors('items');
+
+        $this->assertSame(0, Nota::count());
+
+        // Tepat di batas masih boleh
+        $this->buatNota([$this->itemParkir(['nominal' => Nota::NOMINAL_MAKS])])->assertSessionHasNoErrors();
+        $this->assertEquals(Nota::NOMINAL_MAKS, Nota::firstOrFail()->nominal);
+    }
+
+    public function test_edit_juga_menolak_total_melebihi_batas(): void
+    {
+        $this->buatNota([$this->itemParkir()]);
+        $nota = Nota::firstOrFail();
+
+        $this->actingAs($this->admin)->put(route('nota.update', $nota), [
+            'tanggal' => now()->format('Y-m-d'),
+            'items' => [$this->itemParkir(['nominal' => 5000000000, 'qty' => 2]), $this->itemParkir()],
+        ])->assertSessionHasErrors('items');
+
+        $this->assertEquals(5000, $nota->fresh()->nominal);
+    }
+
+    public function test_filter_kategori_riwayat_mencakup_item_selain_item_pertama(): void
+    {
+        $this->buatNota([$this->itemParkir(), ['kategori_id' => $this->atk->id, 'keterangan' => 'Pulpen', 'nominal' => 3000, 'qty' => 1]]);
+        $this->buatNota([$this->itemParkir(['keterangan' => 'Parkir saja'])]);
+
+        $multi = Nota::orderBy('id')->firstOrFail();
+        $parkirSaja = Nota::orderByDesc('id')->firstOrFail();
+
+        // Dicek lewat link baris nota, bukan nomornya (nomor nota juga muncul di pesan flash "berhasil dibuat").
+        // ATK cuma ada di item ke-2 nota pertama, jadi nota itu tetap harus muncul
+        $this->actingAs($this->admin)->get(route('nota.riwayat', ['kategori_id' => $this->atk->id]))
+            ->assertOk()->assertSee(route('nota.show', $multi), false)->assertDontSee(route('nota.show', $parkirSaja), false);
+
+        $this->actingAs($this->admin)->get(route('nota.riwayat', ['kategori_id' => $this->parkir->id]))
+            ->assertOk()->assertSee(route('nota.show', $multi), false)->assertSee(route('nota.show', $parkirSaja), false);
+    }
+
+    public function test_terbilang_rupiah(): void
+    {
+        $this->assertSame('Dua belas ribu lima ratus rupiah', Terbilang::rupiah(12500));
+        $this->assertSame('Seribu seratus sebelas rupiah', Terbilang::rupiah(1111));
+        $this->assertSame('Satu juta rupiah', Terbilang::rupiah(1000000));
     }
 }

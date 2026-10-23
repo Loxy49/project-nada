@@ -13,6 +13,11 @@ class Nota extends Model
     // Satu-satunya jalan melihatnya adalah route nota.bukti yang mengecek login dan hak akses.
     public const DISK_BUKTI = 'local';
 
+    // Batas nominal mengikuti kolom decimal(12,2) di tabel notas & nota_items (maks. 9.999.999.999,99).
+    public const NOMINAL_MAKS = 9999999999;
+
+    public const QTY_MAKS = 10000;
+
     protected $fillable = [
         'no_nota', 'pengaju_id', 'kasir', 'metode_bayar', 'no_pelanggan', 'kategori_id', 'tanggal',
         'nominal', 'keterangan', 'bukti_file', 'dihapus_oleh', 'alasan_hapus',
