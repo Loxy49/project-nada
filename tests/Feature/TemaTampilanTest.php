@@ -25,6 +25,15 @@ class TemaTampilanTest extends TestCase
         }
     }
 
+    public function test_menu_log_nota_di_sidebar_hanya_untuk_admin(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']))->get(route('dashboard'))
+            ->assertOk()->assertSee(route('lognota.index'), false);
+
+        $this->actingAs(User::factory()->create(['role' => 'karyawan']))->get(route('dashboard'))
+            ->assertOk()->assertDontSee(route('lognota.index'), false);
+    }
+
     public function test_tema_dipasang_di_head_sebelum_css_supaya_tidak_berkedip(): void
     {
         $html = $this->actingAs(User::factory()->create())->get(route('dashboard'))->getContent();

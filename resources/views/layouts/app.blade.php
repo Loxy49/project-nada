@@ -265,6 +265,10 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9.5" rx="1.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
                     Kunci Periode
                 </a>
+                <a href="{{ route('lognota.index') }}" class="nav-item {{ request()->routeIs('lognota.*') ? 'active' : '' }}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.5" width="14" height="17" rx="1.5"/><path d="M9 3.5v-1h6v1"/><path d="M8.5 9.5h7M8.5 13h7M8.5 16.5h4"/></svg>
+                    Log Nota
+                </a>
             @endif
         </div>
     </aside>
