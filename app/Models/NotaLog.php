@@ -32,6 +32,14 @@ class NotaLog extends Model
         return self::LABEL[$this->aksi] ?? $this->aksi;
     }
 
+    // Total nota pada saat kejadian: kondisi sesudah (buat/ubah/pulihkan), atau sebelum untuk hapus.
+    public function getTotalAttribute(): ?float
+    {
+        $total = ($this->sesudah['total'] ?? null) ?? ($this->sebelum['total'] ?? null);
+
+        return $total === null ? null : (float) $total;
+    }
+
     // Foto kondisi nota saat ini (header + rincian item) untuk dibandingkan sebelum/sesudah.
     public static function snapshot(Nota $nota): array
     {

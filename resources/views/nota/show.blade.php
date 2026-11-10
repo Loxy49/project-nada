@@ -98,7 +98,7 @@
         @elseif(! $nota->terkunci)
             <div class="card" id="hapus" style="max-width:560px; margin:16px auto 0;">
                 <h4 style="margin-top:0;">Hapus nota</h4>
-                <p style="font-size:13px; color:#64748b; margin:0 0 10px;">Nota tidak dihapus permanen: nota dapat dipulihkan melalui Riwayat → Nota terhapus dan tercatat di Log Nota. Alasan wajib diisi.</p>
+                <p style="font-size:13px; color:#64748b; margin:0 0 10px;">Nota tidak dihapus permanen: nota dapat dipulihkan melalui Daftar Nota → Nota terhapus dan tercatat di Log Aktivitas. Alasan wajib diisi.</p>
                 <form method="POST" action="{{ route('nota.destroy', $nota) }}" style="display:flex; gap:8px; flex-wrap:wrap;">
                     @csrf @method('DELETE')
                     <input type="text" name="alasan" value="{{ old('alasan') }}" placeholder="Alasan menghapus nota (min. 5 karakter)" required minlength="5" maxlength="255" style="flex:1; min-width:220px;">
@@ -114,12 +114,7 @@
                 <div style="padding:8px 0; border-top:1px solid #eef0ee; font-size:13px;">
                     <strong>{{ $log->aksi_label }}</strong> oleh {{ $log->user->name ?? '-' }}
                     <span style="color:#94A3B8;">· {{ $log->created_at->format('d M Y H:i') }}</span>
-                    @if($log->alasan)<div>Alasan: {{ $log->alasan }}</div>@endif
-                    @if($log->aksi === 'ubah')
-                        @foreach($log->perubahan() as $baris)
-                            <div style="color:#475569;">{{ $baris }}</div>
-                        @endforeach
-                    @endif
+                    @include('lognota._detail', ['log' => $log])
                 </div>
             @empty
                 <p style="margin:0; font-size:13px; color:#94A3B8;">Belum ada catatan untuk nota ini.</p>

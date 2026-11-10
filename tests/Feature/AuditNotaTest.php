@@ -234,6 +234,43 @@ class AuditNotaTest extends TestCase
         $this->actingAs($this->karyawan)->get(route('lognota.index'))->assertForbidden();
     }
 
+    public function test_log_aktivitas_menyembunyikan_aksi_dibuat_secara_default(): void
+    {
+        $nota = $this->buatNota($this->karyawan);
+        $this->actingAs($this->admin)->delete(route('nota.destroy', $nota), ['alasan' => 'Nota ganda dari Rina']);
+
+        // Yang dicek adalah sel "Aksi" di tabel (<td>...</td>), bukan teks bebas: kata "Dibuat" juga
+        // muncul di opsi dropdown filter ("Dibuat saja"), jadi assertSee/DontSee biasa tidak bisa dipakai.
+        // Default: hanya ubah/hapus/pulihkan, jadi catatan "Dibuat" tidak muncul.
+        $this->actingAs($this->admin)->get(route('lognota.index'))
+            ->assertOk()->assertSee('<td>Dihapus</td>', false)->assertDontSee('<td>Dibuat</td>', false);
+
+        // "Semua aksi" dan "Dibuat saja" menampilkannya.
+        $this->actingAs($this->admin)->get(route('lognota.index', ['aksi' => 'semua']))
+            ->assertOk()->assertSee('<td>Dibuat</td>', false)->assertSee('<td>Dihapus</td>', false);
+        $this->actingAs($this->admin)->get(route('lognota.index', ['aksi' => 'buat']))
+            ->assertOk()->assertSee('<td>Dibuat</td>', false)->assertDontSee('Nota ganda dari Rina');
+    }
+
+    public function test_log_aktivitas_bisa_difilter_per_pengguna_dan_tanggal_serta_menampilkan_total(): void
+    {
+        $nota = $this->buatNota($this->karyawan, [['kategori_id' => $this->parkir->id, 'keterangan' => 'Parkir', 'nominal' => 12500, 'qty' => 1]]);
+        $this->actingAs($this->admin)->delete(route('nota.destroy', $nota), ['alasan' => 'Salah input nominal']);
+
+        $this->actingAs($this->admin)->get(route('lognota.index'))
+            ->assertOk()->assertSee('Rp12.500');
+
+        $this->actingAs($this->admin)->get(route('lognota.index', ['user_id' => $this->admin->id]))
+            ->assertOk()->assertSee($nota->no_nota);
+        $this->actingAs($this->admin)->get(route('lognota.index', ['user_id' => $this->karyawan->id]))
+            ->assertOk()->assertDontSee($nota->no_nota);
+
+        $this->actingAs($this->admin)->get(route('lognota.index', ['dari' => now()->subDay()->toDateString(), 'sampai' => now()->toDateString()]))
+            ->assertOk()->assertSee($nota->no_nota);
+        $this->actingAs($this->admin)->get(route('lognota.index', ['dari' => now()->addDay()->toDateString()]))
+            ->assertOk()->assertDontSee($nota->no_nota);
+    }
+
     // ---------- batas edit karyawan ----------
 
     public function test_karyawan_bisa_mengedit_nota_sendiri_sampai_batas_hari(): void

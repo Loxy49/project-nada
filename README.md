@@ -15,16 +15,16 @@ Dibangun dengan **Laravel 12** (PHP) dan **MySQL**.
 - Nota multi-item: tiap item punya kategori, keterangan, kuantitas, dan harga satuan
 - Field khusus **No. Pelanggan & SN** per item untuk transaksi pulsa/token/PDAM (ikut tercetak dan masuk Excel)
 - Metode bayar (Tunai, Transfer Bank, QRIS, Kartu Debit/Kredit, Lainnya) dan foto bukti opsional (gambar, maks. 2 MB; foto besar dari HP otomatis diperkecil di browser)
-- **Foto bukti sebagai arsip**: disimpan di penyimpanan private (tidak bisa dibuka lewat URL tanpa login), dilihat dari Riwayat atau halaman detail nota, dan **tidak ikut tercetak** di nota
+- **Foto bukti sebagai arsip**: disimpan di penyimpanan private (tidak bisa dibuka lewat URL tanpa login), dilihat dari Daftar Nota atau halaman detail nota, dan **tidak ikut tercetak** di nota
 - Nomor transaksi otomatis, format `PN-YYYYMMDD-XXX`; tidak kembar walau ada nota yang dihapus
 - Cetak nota dalam 2 gaya (Formal dan Struk) dan 2 orientasi (potret/lanskap), dilengkapi nominal terbilang
 - Template kop nota yang bisa dikustomisasi admin (nama toko, logo, alamat) tanpa ubah kode
 
 **Rekap & arsip**
 
-- Riwayat nota dengan pencarian & filter (kategori, bulan)
-- **Jejak audit**: setiap nota dibuat, diubah (kondisi sebelum & sesudah), dihapus, atau dipulihkan tercatat lengkap dengan siapa dan kapan; admin melihatnya di halaman nota dan di menu **Log Nota**
-- **Hapus nota = soft delete**: admin wajib mengisi alasan, nota bisa dipulihkan dari Riwayat → Nota terhapus, dan nomornya tidak dipakai lagi
+- Daftar nota dengan pencarian & filter (kategori, bulan)
+- **Jejak audit**: setiap nota dibuat, diubah (kondisi sebelum & sesudah), dihapus, atau dipulihkan tercatat lengkap dengan siapa dan kapan; admin melihatnya di halaman nota dan di menu **Log Aktivitas**
+- **Hapus nota = soft delete**: admin wajib mengisi alasan, nota bisa dipulihkan dari Daftar Nota → Nota terhapus, dan nomornya tidak dipakai lagi
 - Dashboard: pengeluaran per kategori bulan ini dan tren bulanan
 - Ekspor rekap bulanan ke **Excel (.xlsx)** (satu baris per item) dan **PDF**; rekap per kategori dihitung dari item, jadi nota berisi beberapa kategori terbagi dengan benar
 - **Kunci periode**: admin menutup bulan yang sudah direkap; nota di bulan itu tidak bisa ditambah, diubah, atau dihapus oleh siapa pun sampai kuncinya dibuka dengan alasan yang tercatat
@@ -46,14 +46,14 @@ Dibangun dengan **Laravel 12** (PHP) dan **MySQL**.
 |                                       | Karyawan                                     | Admin                             |
 | ------------------------------------- | -------------------------------------------- | --------------------------------- |
 | Buat nota & cetak                     | ✓                                            | ✓                                 |
-| Lihat riwayat nota                    | hanya nota sendiri                           | semua nota                        |
+| Lihat daftar nota                     | hanya nota sendiri                           | semua nota                        |
 | Edit nota                             | nota sendiri, sampai 7 hari setelah dibuat\* | semua nota                        |
 | Hapus & pulihkan nota                 | ✗                                            | ✓ (alasan wajib, bisa dipulihkan) |
 | Dashboard                             | ringkasan sendiri                            | ringkasan seluruh nota            |
 | Kategori, Template Nota, Ekspor Rekap | ✗                                            | ✓                                 |
 | Kunci Periode                         | ✗                                            | ✓                                 |
 | Kelola Pengguna                       | ✗                                            | ✓                                 |
-| Log Nota (jejak audit)                | ✗                                            | ✓                                 |
+| Log Aktivitas (jejak audit)           | ✗                                            | ✓                                 |
 
 \* Batas hari edit karyawan diatur lewat `NOTA_EDIT_KARYAWAN_HARI` di `.env` (default 7). Setiap perubahan tercatat di jejak audit.
 
@@ -156,7 +156,7 @@ php artisan migrate
 
 **Admin / accounting:**
 
-1. Pantau nota di **Riwayat** dan **Dashboard**; periksa siapa mengubah atau menghapus apa di **Log Nota**.
+1. Pantau nota di **Daftar Nota** dan **Dashboard**; periksa siapa mengubah atau menghapus apa di **Log Aktivitas**.
 2. Akhir bulan, unduh rekap **Excel/PDF** (menu Ekspor Rekap, atau tombol di halaman Kunci Periode).
 3. Buka **Kunci Periode** dan kunci bulan yang sudah direkap supaya notanya tidak bisa berubah lagi.
 4. Perlu koreksi? Buka kunci bulan itu (alasan wajib diisi, tercatat di riwayat), perbaiki, lalu kunci lagi.

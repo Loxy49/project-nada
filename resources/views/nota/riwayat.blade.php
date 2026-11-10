@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', $terhapus ? 'Nota Terhapus' : 'Riwayat Nota')
+@section('title', $terhapus ? 'Nota Terhapus' : 'Daftar Nota')
 
 @section('content')
     <form method="GET" action="{{ route('nota.riwayat') }}" class="filter-bar">
@@ -16,7 +16,7 @@
         <a href="{{ route('nota.riwayat', $terhapus ? ['terhapus' => 1] : []) }}" class="btn btn-outline">Reset</a>
         @if(auth()->user()->isAdmin())
             @if($terhapus)
-                <a href="{{ route('nota.riwayat') }}" class="btn btn-outline">← Kembali ke riwayat</a>
+                <a href="{{ route('nota.riwayat') }}" class="btn btn-outline">← Kembali ke daftar nota</a>
             @else
                 <a href="{{ route('nota.riwayat', ['terhapus' => 1]) }}" class="btn btn-outline">Nota terhapus</a>
             @endif
