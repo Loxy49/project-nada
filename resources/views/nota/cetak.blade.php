@@ -145,7 +145,9 @@
     </div>
 
     {{-- ====== FORMAT FORMAL (A4/A5) — pengaturan awal ====== --}}
-    <div id="formal" class="kertas">
+    {{-- Kertas gaya default ditandai "active" dari server, jadi tetap tampil dan tercetak walau JavaScript
+         gagal atau penyimpanan browser (localStorage) diblokir. JavaScript di bawah hanya menukar pilihan. --}}
+    <div id="formal" class="kertas {{ $pengaturan->gaya_default === 'formal' ? 'active' : '' }}">
         <div class="kop">
             <div>
                 <div class="brand">
@@ -235,7 +237,7 @@
             </div>
             <div class="kotak">
                 <div>Mengetahui,</div>
-                <div class="garis">{{ $nota->approver->name ?? '(............................)' }}</div>
+                <div class="garis">(............................)</div>
             </div>
         </div>
 
@@ -243,7 +245,7 @@
     </div>
 
     {{-- ====== FORMAT STRUK ====== --}}
-    <div id="struk" class="kertas">
+    <div id="struk" class="kertas {{ $pengaturan->gaya_default === 'formal' ? '' : 'active' }}">
         <div class="icon-box">
             @if($pengaturan->logo)
                 <img src="{{ asset('storage/'.$pengaturan->logo) }}" alt="Logo" style="width:100%; height:100%; object-fit:cover; border-radius:13px;">
@@ -332,9 +334,21 @@
             document.getElementById('struk').classList.toggle('active', mode === 'struk');
             document.getElementById('btn-formal').classList.toggle('active', mode === 'formal');
             document.getElementById('btn-struk').classList.toggle('active', mode === 'struk');
-            localStorage.setItem('pettynota_cetak_mode', mode);
+            try { localStorage.setItem('pettynota_cetak_mode', mode); } catch (e) { /* penyimpanan diblokir: abaikan */ }
         }
-        pilihFormat(localStorage.getItem('pettynota_cetak_mode') || '{{ $pengaturan->gaya_default }}');
+
+        // Pilihan tersimpan hanya dipakai kalau valid. Nilai lama/asing atau penyimpanan yang diblokir
+        // membuat halaman jatuh ke gaya default template, bukan kosong.
+        const gayaDefault = '{{ $pengaturan->gaya_default === 'formal' ? 'formal' : 'struk' }}';
+        function bacaModeTersimpan() {
+            try {
+                const m = localStorage.getItem('pettynota_cetak_mode');
+                return (m === 'formal' || m === 'struk') ? m : null;
+            } catch (e) {
+                return null;
+            }
+        }
+        pilihFormat(bacaModeTersimpan() || gayaDefault);
 
         // Jam cetak mengikuti jam yang benar-benar berjalan saat ini (live clock),
         // bukan cuma waktu saat halaman pertama kali dimuat di server.

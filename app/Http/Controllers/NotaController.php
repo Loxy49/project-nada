@@ -215,7 +215,7 @@ class NotaController extends Controller
         return view('nota.cetak', compact('nota', 'terbilang', 'pengaturan', 'daftarTemplate'));
     }
 
-    // Riwayat nota: karyawan lihat punya sendiri, admin lihat semua + filter/search
+    // Daftar nota: karyawan lihat punya sendiri, admin lihat semua + filter/search
     public function riwayat(Request $request)
     {
         // Admin bisa melihat nota yang sudah dihapus lewat ?terhapus=1 (untuk audit atau dipulihkan).
@@ -283,7 +283,7 @@ class NotaController extends Controller
         });
 
         return redirect()->route('nota.riwayat')
-            ->with('success', "Nota {$nota->no_nota} dihapus. Nota masih dapat dipulihkan melalui Riwayat → Nota terhapus.");
+            ->with('success', "Nota {$nota->no_nota} dihapus. Nota masih dapat dipulihkan melalui Daftar Nota → Nota terhapus.");
     }
 
     // Pulihkan nota yang terhapus (admin only). Nota di periode terkunci tidak bisa dipulihkan.
@@ -351,8 +351,8 @@ class NotaController extends Controller
         }
     }
 
-    // Edit dibatasi: admin bebas kapan saja, karyawan cuma nota miliknya sendiri
-    // dan cuma di hari yang sama nota itu dibuat (biar gak diubah-ubah lama setelahnya).
+    // Edit dibatasi: admin bebas kapan saja (selama periode belum dikunci), karyawan cuma nota miliknya sendiri
+    // dan cuma sampai batas hari di config pettynota.edit_karyawan_hari (default 7 hari).
     private function authorizeEdit(Nota $nota): void
     {
         // Periode terkunci: tidak bisa diubah siapa pun, termasuk admin.
