@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Kategori;
 use App\Models\Nota;
 use App\Models\NotaItem;
+use App\Models\Pengaturan;
 use App\Models\User;
 use App\Support\Terbilang;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -109,6 +110,28 @@ class NotaTest extends TestCase
 
         $this->assertEquals(5000, $ringkasan['total_bulan_ini']);
         $this->assertEquals(1, $ringkasan['nota_bulan_ini']);
+    }
+
+    // Dulu kedua kertas disembunyikan lewat CSS dan baru ditampilkan oleh JavaScript, sehingga halaman cetak
+    // kosong kalau localStorage diblokir/berisi nilai asing atau JavaScript gagal. Sekarang gaya default
+    // sudah ditandai "active" dari server.
+    public function test_halaman_cetak_selalu_punya_satu_kertas_aktif_dari_server(): void
+    {
+        $this->buatNota([$this->itemParkir()]);
+        $nota = Nota::firstOrFail();
+
+        foreach (['struk', 'formal'] as $gaya) {
+            Pengaturan::query()->delete();
+            Pengaturan::create([
+                'nama' => 'Uji', 'nama_toko' => 'NADA', 'gaya_default' => $gaya,
+                'orientasi' => 'potret', 'is_default' => true,
+            ]);
+
+            $html = $this->actingAs($this->admin)->get(route('nota.cetak', $nota))->assertOk()->getContent();
+
+            $this->assertSame(1, preg_match_all('/<div id="(formal|struk)" class="kertas active"/', $html, $cocok), "gaya {$gaya}");
+            $this->assertSame([$gaya], $cocok[1], "gaya {$gaya}");
+        }
     }
 
     public function test_cetak_menampilkan_no_pelanggan_dan_sn_per_item(): void
