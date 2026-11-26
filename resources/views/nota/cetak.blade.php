@@ -113,8 +113,11 @@
         #struk .footer-note { margin-top: 4px; font-size: 11.5px; color: #a3a3a3; text-align: center; line-height: 1.6; }
 
         @media print {
-            @page { size: A4 {{ $pengaturan->orientasi === 'lanskap' ? 'landscape' : 'portrait' }}; margin: 10mm; }
-            body { background: #fff; padding: 0; }
+            @page { size: A4 {{ $pengaturan->orientasi === 'lanskap' ? 'landscape' : 'portrait' }}; margin: 0; }
+            /* margin @page 0 membuat browser tidak mencetak tanggal, judul, dan alamat halaman di tepi kertas;
+               jarak tepi diganti dengan padding body. */
+            html, body { margin: 0; }
+            body { background: #fff; padding: 10mm; }
             .toolbar { display: none !important; }
             .kertas { box-shadow: none; border: none; border-radius: 0; margin: 0 auto; }
             #formal.kertas { padding: 10mm 14mm; max-width: 100%; }
