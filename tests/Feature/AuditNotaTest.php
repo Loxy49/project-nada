@@ -252,7 +252,7 @@ class AuditNotaTest extends TestCase
             ->assertOk()->assertSee('<td>Dibuat</td>', false)->assertDontSee('Nota ganda dari Rina');
     }
 
-    public function test_log_aktivitas_bisa_difilter_per_pengguna_dan_tanggal_serta_menampilkan_total(): void
+    public function test_log_aktivitas_bisa_difilter_per_pengguna_dan_bulan_serta_menampilkan_total(): void
     {
         $nota = $this->buatNota($this->karyawan, [['kategori_id' => $this->parkir->id, 'keterangan' => 'Parkir', 'nominal' => 12500, 'qty' => 1]]);
         $this->actingAs($this->admin)->delete(route('nota.destroy', $nota), ['alasan' => 'Salah input nominal']);
@@ -265,9 +265,9 @@ class AuditNotaTest extends TestCase
         $this->actingAs($this->admin)->get(route('lognota.index', ['user_id' => $this->karyawan->id]))
             ->assertOk()->assertDontSee($nota->no_nota);
 
-        $this->actingAs($this->admin)->get(route('lognota.index', ['dari' => now()->subDay()->toDateString(), 'sampai' => now()->toDateString()]))
+        $this->actingAs($this->admin)->get(route('lognota.index', ['bulan' => now()->format('Y-m')]))
             ->assertOk()->assertSee($nota->no_nota);
-        $this->actingAs($this->admin)->get(route('lognota.index', ['dari' => now()->addDay()->toDateString()]))
+        $this->actingAs($this->admin)->get(route('lognota.index', ['bulan' => now()->addMonth()->format('Y-m')]))
             ->assertOk()->assertDontSee($nota->no_nota);
     }
 
@@ -343,5 +343,16 @@ class AuditNotaTest extends TestCase
 
         $this->actingAs($this->karyawan)->post(route('nota.store'), $this->payload())->assertSessionHasErrors('tanggal');
         $this->assertStringContainsString('diarsipkan', session('errors')->first('tanggal'));
+    }
+
+    public function test_log_aktivitas_bisa_difilter_per_bulan(): void
+    {
+        $lama = NotaLog::create(['nota_id' => 1, 'no_nota' => 'PN-LAMA-001', 'user_id' => $this->admin->id, 'aksi' => 'ubah']);
+        $lama->forceFill(['created_at' => '2026-09-10 10:00:00'])->save();
+        $baru = NotaLog::create(['nota_id' => 2, 'no_nota' => 'PN-BARU-001', 'user_id' => $this->admin->id, 'aksi' => 'ubah']);
+        $baru->forceFill(['created_at' => '2026-10-05 10:00:00'])->save();
+
+        $this->actingAs($this->admin)->get(route('lognota.index', ['bulan' => '2026-10']))
+            ->assertOk()->assertSee('PN-BARU-001')->assertDontSee('PN-LAMA-001');
     }
 }

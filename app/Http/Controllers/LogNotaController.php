@@ -29,12 +29,9 @@ class LogNotaController extends Controller
             $query->where('user_id', $request->integer('user_id'));
         }
 
-        if ($request->filled('dari') && strtotime($request->dari) !== false) {
-            $query->whereDate('created_at', '>=', $request->dari);
-        }
-
-        if ($request->filled('sampai') && strtotime($request->sampai) !== false) {
-            $query->whereDate('created_at', '<=', $request->sampai);
+        // Filter satu bulan (format YYYY-MM) dari input type="month".
+        if ($request->filled('bulan') && preg_match('/^(\d{4})-(0[1-9]|1[0-2])$/', $request->bulan, $m)) {
+            $query->whereYear('created_at', (int) $m[1])->whereMonth('created_at', (int) $m[2]);
         }
 
         $logs = $query->paginate(25)->withQueryString();

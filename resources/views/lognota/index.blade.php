@@ -16,8 +16,7 @@
                 <option value="{{ $p->id }}" @selected((string) request('user_id') === (string) $p->id)>{{ $p->name }}</option>
             @endforeach
         </select>
-        <input type="date" name="dari" value="{{ request('dari') }}" title="Dari tanggal">
-        <input type="date" name="sampai" value="{{ request('sampai') }}" title="Sampai tanggal">
+        <input type="month" name="bulan" value="{{ request('bulan') }}" title="Bulan">
         <button type="submit" class="btn">Filter</button>
         <a href="{{ route('lognota.index') }}" class="btn btn-outline">Reset</a>
     </form>
